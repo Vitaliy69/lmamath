@@ -1,23 +1,90 @@
 # lmamath
 
-Solves a formulation of n-D space trilateration problem using a nonlinear least squares optimizer.
+![Go](https://img.shields.io/github/go-mod/go-version/Vitaliy69/lmamath)
+![Build](https://img.shields.io/github/actions/workflow/status/Vitaliy69/lmamath/go.yml)
+![License](https://img.shields.io/github/license/Vitaliy69/lmamath)
+![Go Reference](https://pkg.go.dev/badge/github.com/Vitaliy69/lmamath.svg)
 
-**Input:** positions, distances  
-**Output:** centroid 
+n-Dimensional trilateration in Go using the Levenberg–Marquardt Algorithm (LMA).
 
-Uses [Levenberg-Marquardt algorithm](http://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm).
+The library solves a non-linear least-squares problem: given a set of anchor
+points with known coordinates and measured distances to an unknown point, it
+estimates the most likely coordinates of that point.
 
-## Usage 
+## Features
+
+- Works in spaces of arbitrary dimension (2D, 3D and higher).
+- Robust to noise in distance measurements.
+- Minimal dependencies, pure Go.
+
+## Use cases
+
+Trilateration appears anywhere a position must be recovered from distances to
+known reference points:
+
+- Indoor positioning (BLE beacons, UWB, Wi-Fi RTT) where GPS is unavailable.
+- Asset and equipment tracking in IoT networks.
+- Localization of robots and UAVs.
+
+## Installation
+
+```bash
+go get github.com/Vitaliy69/lmamath
 ```
-import "github.com/Vitaliy69/lmamath"
 
-//positions := [][]float64{{1.5, 5.0}, {-4.5, -6.7}, {18.5, 12.5}, {10.5, 15.6}} // 2-D space
-positions := [][]float64{{1.5, 5.0, 0.5}, {-4.5, -6.7, 3.0}, {18.5, 12.5, 0.5}, {10.5, 15.6, 2.75}} // 3-D space
-distances := []float64{3.0, 4.0, 5.9, 13.1}
+## Usage
 
-if coordinates, e := Solve_LMA(positions, distances); e == nil {
-	fmt.Printf("Coordinates are: %v\n", coordinates)
-} else {
-	fmt.Printf("Calculation error: %s\n", e)
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/Vitaliy69/lmamath"
+)
+
+func main() {
+	// Anchor coordinates in 3D
+	positions := [][]float64{
+		{1.5, 5.0, 0.5},
+		{-4.5, -6.7, 3.0},
+		{18.5, 12.5, 0.5},
+		{10.5, 15.6, 2.75},
+	}
+
+	// Measured distances from each anchor to the unknown point
+	distances := []float64{3.0, 4.0, 5.9, 13.1}
+
+	coordinates, err := lmamath.Solve_LMA(positions, distances)
+	if err != nil {
+		fmt.Printf("solve error: %s\n", err)
+		return
+	}
+
+	fmt.Printf("Estimated coordinates: %v\n", coordinates)
 }
 ```
+
+### Input requirements
+
+- `positions` — a slice of points; all points must have the same dimension `n`.
+- `distances` — one distance per anchor; its length must match the number of points.
+- For a well-defined solution, provide at least `n + 1` anchors.
+
+## How it works
+
+The problem is reduced to minimizing the sum of squared residuals:
+
+​```
+f(x) = Σ ( ||x - pᵢ|| - dᵢ )²
+​```
+
+where `pᵢ` are the coordinates of the i-th anchor, `dᵢ` is the measured distance
+to it, and `x` is the unknown position. The Levenberg–Marquardt algorithm
+iteratively refines `x` by blending Gauss–Newton and gradient-descent steps: the
+damping factor is adjusted automatically, which helps avoid getting stuck in
+local minima and ensures stable convergence even with noisy measurements.
+
+## License
+
+Released under the MIT License. See the [LICENSE](LICENSE) file.
