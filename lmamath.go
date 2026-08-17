@@ -62,11 +62,6 @@ func uniquesArray(intSlice []float64) []float64 {
 	return list
 }
 
-func CalculateRealDistance(onMeterRssi int, currenRssi int) float64 {
-	ratioDB := onMeterRssi - currenRssi
-	return math.Pow(10.0, float64(ratioDB)/20)
-}
-
 func Solve_LMA(positions [][]float64, distances []float64) ([]float64, error) {
 	if len(positions) < 3 || len(distances) < 3 || len(positions) != len(distances) {
 		return nil, errors.New("input arguments error: need at least 3 anchors with matching distances")
