@@ -13,7 +13,7 @@ estimates the most likely coordinates of that point.
 
 ## Features
 
-- Works in spaces of arbitrary dimension (2D, 3D and higher).
+- Works in spaces of arbitrary dimension (2D and higher).
 - Robust to noise in distance measurements.
 - Minimal dependencies, pure Go.
 
@@ -22,10 +22,9 @@ estimates the most likely coordinates of that point.
 Trilateration appears anywhere a position must be recovered from distances to
 known reference points:
 
-- Indoor positioning (BLE beacons, UWB, Wi-Fi RTT) where GPS is unavailable.
+- Indoor positioning (BLE beacons, UWB, Wi-Fi RTT) where satellite positioning cannot reach.
 - Asset and equipment tracking in IoT networks.
-- Localization of robots and UAVs.
-
+- Localization of warehouse robots and delivery fleet vehicles.
 ## Installation
 
 ```bash
@@ -44,7 +43,7 @@ import (
 )
 
 func main() {
-	// Anchor coordinates in 3D
+	// Anchor coordinates (example in three axes; any consistent dimension works)
 	positions := [][]float64{
 		{1.5, 5.0, 0.5},
 		{-4.5, -6.7, 3.0},
@@ -76,11 +75,14 @@ func main() {
 The problem is reduced to minimizing the sum of squared residuals:
 
 ​```
-f(x) = Σ ( ||x - pᵢ|| - dᵢ )²
+f(x) = Σ ( ||x - pᵢ||² - dᵢ² )²
 ​```
 
 where `pᵢ` are the coordinates of the i-th anchor, `dᵢ` is the measured distance
-to it, and `x` is the unknown position. The Levenberg–Marquardt algorithm
+to it, and `x` is the unknown position. The squared form (difference of squared
+distances rather than of distances) shares its minimizer with the direct form
+whenever an exact solution exists, and yields a simpler Jacobian. The
+Levenberg–Marquardt algorithm
 iteratively refines `x` by blending Gauss–Newton and gradient-descent steps: the
 damping factor is adjusted automatically, which helps avoid getting stuck in
 local minima and ensures stable convergence even with noisy measurements.
