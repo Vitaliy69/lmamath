@@ -18,6 +18,8 @@ type lmaOptimum struct {
 	target           []float64
 	weightSquareRoot []float64
 	start            []float64
+	positions        [][]float64
+	distances        []float64
 }
 
 type lmaEvaluation struct {
@@ -37,9 +39,6 @@ type lmaInternalData struct {
 
 const maxIteration = 1000
 const maxEvaluation = 1000
-
-var lmaPositions [][]float64
-var lmaDistances []float64
 
 func createArray(size int) []float64 {
 	s := make([]float64, size)
@@ -69,11 +68,29 @@ func CalculateRealDistance(onMeterRssi int, currenRssi int) float64 {
 }
 
 func Solve_LMA(positions [][]float64, distances []float64) ([]float64, error) {
-	if len(positions) < 2 || len(distances) < 2 || len(positions) != len(distances) {
-		return nil, errors.New("input arguments error")
+	if len(positions) < 3 || len(distances) < 3 || len(positions) != len(distances) {
+		return nil, errors.New("input arguments error: need at least 3 anchors with matching distances")
 	}
 
-	for i := 0; i < len(positions[0]); i++ {
+	positionDimension := len(positions[0])
+	for _, p := range positions {
+		if len(p) != positionDimension {
+			return nil, errors.New("input arguments error: inconsistent anchor dimensionality")
+		}
+		for _, c := range p {
+			if math.IsNaN(c) || math.IsInf(c, 0) {
+				return nil, errors.New("input arguments error: anchor coordinates must be finite numbers")
+			}
+		}
+	}
+
+	for _, d := range distances {
+		if math.IsNaN(d) || math.IsInf(d, 0) || d <= 0 {
+			return nil, errors.New("input arguments error: distances must be positive finite numbers")
+		}
+	}
+
+	for i := 0; i < positionDimension; i++ {
 		var values []float64
 		for j := 0; j < len(positions); j++ {
 			values = append(values, positions[j][i])
@@ -85,13 +102,24 @@ func Solve_LMA(positions [][]float64, distances []float64) ([]float64, error) {
 		}
 	}
 
-	lmaPositions = positions
-	lmaDistances = distances
+	for i := 0; i < len(positions); i++ {
+		for j := i + 1; j < len(positions); j++ {
+			same := true
+			for k := 0; k < positionDimension; k++ {
+				if positions[i][k] != positions[j][k] {
+					same = false
+					break
+				}
+			}
+			if same {
+				return nil, errors.New("input arguments error: duplicate anchors")
+			}
+		}
+	}
 
-	var numberOfPositions = len(positions)
-	var positionDimension = len(positions[0])
+	numberOfPositions := len(positions)
 
-	var initialPoint = createArray(positionDimension)
+	initialPoint := createArray(positionDimension)
 	for i := 0; i < len(positions); i++ {
 		vertex := positions[i]
 		for j := 0; j < len(vertex); j++ {
@@ -109,7 +137,7 @@ func Solve_LMA(positions [][]float64, distances []float64) ([]float64, error) {
 		weights[i] = inverseSquareLaw(distances[i])
 	}
 
-	optimum := solveProblem(target, weights, initialPoint)
+	optimum := solveProblem(target, weights, initialPoint, positions, distances)
 	if evaluation, e := optimize(optimum); e != nil {
 		return nil, errors.New("optimize error")
 	} else {
@@ -121,9 +149,11 @@ func inverseSquareLaw(distance float64) float64 {
 	return 1 / (distance * distance)
 }
 
-func solveProblem(target []float64, weights []float64, initialPoint []float64) lmaOptimum {
+func solveProblem(target []float64, weights []float64, initialPoint []float64, positions [][]float64, distances []float64) lmaOptimum {
 	var optimun lmaOptimum
 	optimun.target = target
+	optimun.positions = positions
+	optimun.distances = distances
 	optimun.weightSquareRoot = createArray(len(weights))
 	for i, value := range weights {
 		optimun.weightSquareRoot[i] = math.Sqrt(value)
@@ -167,8 +197,8 @@ func optimize(optium lmaOptimum) (lmaEvaluation, error) {
 
 	// Evaluate the function at the starting point and calculate its norm
 	var current lmaEvaluation
-	current.jacobian = jacobian(optium.start)
-	current.residuals = value(optium.start)
+	current.jacobian = jacobian(optium.start, optium.positions, optium.distances)
+	current.residuals = value(optium.start, optium.positions, optium.distances)
 	current.point = optium.start
 
 	currentResiduals := getResiduals(current.residuals, optium.weightSquareRoot)
@@ -294,8 +324,8 @@ func optimize(optium lmaOptimum) (lmaEvaluation, error) {
 				return current, errors.New("there is no decision")
 			}
 
-			current.jacobian = jacobian(currentPoint)
-			current.residuals = value(currentPoint)
+			current.jacobian = jacobian(currentPoint, optium.positions, optium.distances)
+			current.residuals = value(currentPoint, optium.positions, optium.distances)
 			current.point = currentPoint
 
 			currentResiduals = getResiduals(current.residuals, optium.weightSquareRoot)
@@ -398,24 +428,24 @@ func optimize(optium lmaOptimum) (lmaEvaluation, error) {
 		}
 	}
 }
-func jacobian(point []float64) [][]float64 {
+func jacobian(point []float64, positions [][]float64, distances []float64) [][]float64 {
 	var jacobian [][]float64
-	for range lmaDistances {
+	for range distances {
 		s := createArray(len(point))
 		jacobian = append(jacobian, s)
 	}
 
 	for i := 0; i < len(jacobian); i++ {
 		for j := 0; j < len(point); j++ {
-			jacobian[i][j] = 2*point[j] - 2*lmaPositions[i][j]
+			jacobian[i][j] = 2*point[j] - 2*positions[i][j]
 		}
 	}
 
 	return jacobian
 }
 
-func value(point []float64) []float64 {
-	resultPoint := createArray(len(lmaDistances))
+func value(point []float64, positions [][]float64, distances []float64) []float64 {
+	resultPoint := createArray(len(distances))
 
 	// Compute least squares
 	for i := 0; i < len(resultPoint); i++ {
@@ -423,10 +453,10 @@ func value(point []float64) []float64 {
 
 		// Calculate sum, add to overall
 		for j := 0; j < len(point); j++ {
-			resultPoint[i] += (point[j] - lmaPositions[i][j]) * (point[j] - lmaPositions[i][j])
+			resultPoint[i] += (point[j] - positions[i][j]) * (point[j] - positions[i][j])
 		}
 
-		resultPoint[i] -= lmaDistances[i] * lmaDistances[i]
+		resultPoint[i] -= distances[i] * distances[i]
 		resultPoint[i] *= -1
 	}
 
