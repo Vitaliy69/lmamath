@@ -68,7 +68,7 @@ func main() {
 
 - `positions` — a slice of points; all points must have the same dimension `n`.
 - `distances` — one distance per anchor; its length must match the number of points.
-- For a well-defined solution, provide at least `n + 1` anchors.
+- For a well-defined solution, provide at least `n + 1` anchors. The solver itself enforces a minimum of three anchors in any dimension, matching the Swift port.
 
 ## How it works
 
