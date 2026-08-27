@@ -68,11 +68,21 @@ func main() {
 ### Distance helper
 
 Trilateration consumers usually derive their distance inputs from RSSI readings.
-The library ships the conversion anchored at the 1-meter reference:
+The library ships the conversion anchored at the 1-meter reference. The default
+form assumes free space (path-loss exponent n = 2):
 
 ```go
 // distance = 10^((txCalibratedPower - rssi) / 20)   // free space, n = 2
 d := lmamath.CalculateRealDistance(-59, -70) // -> 3.54 meters
+```
+
+Real buildings rarely agree with free space. `CalculateRealDistanceN` takes the
+exponent explicitly; fit it per zone from baseline readings (published indoor
+values: 2.7 to 3.5 in offices, 4 and higher in cluttered industrial halls):
+
+```go
+// distance = 10^((txCalibratedPower - rssi) / (10 * n))
+d := lmamath.CalculateRealDistanceN(-59, -70, 2.8) // -> 2.47 meters
 ```
 
 ### Input requirements

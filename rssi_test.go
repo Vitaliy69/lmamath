@@ -25,3 +25,30 @@ func TestCalculateRealDistance(t *testing.T) {
 		}
 	}
 }
+
+func TestCalculateRealDistanceN(t *testing.T) {
+	cases := []struct {
+		name string
+		tx   int
+		rssi int
+		n    float64
+		want float64
+	}{
+		{"free space matches the default form", -59, -70, 2.0, math.Pow(10, 11.0/20)},
+		{"fitted office exponent from the article", -59, -70, 2.8, math.Pow(10, 11.0/28)},
+		{"cluttered industrial hall", -59, -70, 4.0, math.Pow(10, 11.0/40)},
+	}
+	for _, c := range cases {
+		got := CalculateRealDistanceN(c.tx, c.rssi, c.n)
+		if math.Abs(got-c.want) > 1e-9 {
+			t.Fatalf("%s: CalculateRealDistanceN(%d, %d, %v) = %v, want %v",
+				c.name, c.tx, c.rssi, c.n, got, c.want)
+		}
+	}
+	if !math.IsNaN(CalculateRealDistanceN(-59, -70, 0)) {
+		t.Fatal("want NaN for n = 0")
+	}
+	if !math.IsNaN(CalculateRealDistanceN(-59, -70, -2)) {
+		t.Fatal("want NaN for negative n")
+	}
+}
