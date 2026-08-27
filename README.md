@@ -15,6 +15,7 @@ estimates the most likely coordinates of that point.
 
 - Works in spaces of arbitrary dimension (2D and higher).
 - Robust to noise in distance measurements.
+- RSSI-to-distance helper (`CalculateRealDistance`) via the log-distance path-loss model.
 - Minimal dependencies, pure Go.
 
 ## Use cases
@@ -62,6 +63,16 @@ func main() {
 
 	fmt.Printf("Estimated coordinates: %v\n", coordinates)
 }
+```
+
+### Distance helper
+
+Trilateration consumers usually derive their distance inputs from RSSI readings.
+The library ships the conversion anchored at the 1-meter reference:
+
+```go
+// distance = 10^((txCalibratedPower - rssi) / 20)   // free space, n = 2
+d := lmamath.CalculateRealDistance(-59, -70) // -> 3.54 meters
 ```
 
 ### Input requirements
