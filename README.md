@@ -72,6 +72,17 @@ func main() {
 
 ## How it works
 
+![Four anchors at known 3D coordinates, noisy distance measurements, and the solver's convergence path](docs/lmamath_how_it_works.png)
+
+Four anchors at known 3D coordinates, noisy distance measurements (±0.35 m:
+body shadowing, 2.4 GHz interference), and the solver's own convergence path,
+traced directly from the library's Levenberg-Marquardt loop. The initial guess
+is the centroid of the anchors; the estimate lands 0.45 m from ground truth in
+7 iterations. Right: cost per iteration and the damping factor λ, which rises
+once to damp a bad step, then drops to zero as the solver switches to
+Gauss-Newton steps near the minimum. (Z axis stretched 1.25× for readability;
+RSSI labels use the free-space n = 2 path-loss model.)
+
 The problem is reduced to minimizing the sum of squared residuals:
 
 ​```
