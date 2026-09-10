@@ -26,6 +26,11 @@ known reference points:
 - Indoor positioning (BLE beacons, UWB, Wi-Fi RTT) where satellite positioning cannot reach.
 - Asset and equipment tracking in IoT networks.
 - Localization of warehouse robots and delivery fleet vehicles.
+## In the wild
+
+lmamath is the positioning core of [BeaconIL](https://github.com/Vitaliy69/BeaconIL); the full field story - EMA filtering, per-beacon calibration, and the optimizer at work - is on HackerNoon:
+[Where Satellite Positioning Fails: Fighting Bluetooth RSSI Chaos With Levenberg-Marquardt](https://hackernoon.com/where-satellite-positioning-fails-fighting-bluetooth-rssi-chaos-with-levenberg-marquardt)
+
 ## Installation
 
 ```bash
